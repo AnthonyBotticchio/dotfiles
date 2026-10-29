@@ -56,7 +56,12 @@ return {
         version = "*",
         dependencies = {
             "nvim-lua/plenary.nvim",
-            { "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
+            {
+                "nvim-telescope/telescope-fzf-native.nvim",
+                build = vim.fn.has("win32") == 1
+                    and "cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build"
+                    or "make",
+            },
         },
         config = function()
             local telescope = require("telescope")
