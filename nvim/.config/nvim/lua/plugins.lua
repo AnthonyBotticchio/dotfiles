@@ -5,6 +5,7 @@ return {
             ensure_installed = {
                 "cmake",
                 "glsl_analyzer",
+                "rust_analyzer",
             },
         },
         dependencies = {

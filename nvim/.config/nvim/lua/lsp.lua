@@ -42,14 +42,19 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     group = vim.api.nvim_create_augroup("FormatOnSave", { clear = true }),
     callback = function(event)
         local filetype = vim.bo[event.buf].filetype
-        if filetype == "glsl" then
+        if filetype == "glsl" or filetype == "rust" then
             local lines = vim.api.nvim_buf_get_lines(event.buf, 0, -1, false)
-            local result = vim.system({
-                "clang-format", "--style=file",
-                "--assume-filename=" .. vim.api.nvim_buf_get_name(event.buf),
-            }, { stdin = table.concat(lines, "\n") .. "\n", text = true }):wait(1000)
+            local filename = vim.api.nvim_buf_get_name(event.buf)
+            local command = filetype == "rust"
+                and { "rustfmt", "--edition", "2024" }
+                or { "clang-format", "--style=file", "--assume-filename=" .. filename }
+            if vim.fn.executable(command[1]) ~= 1 then
+                vim.notify(command[1] .. " is not available on PATH; skipping formatting.", vim.log.levels.WARN)
+                return
+            end
+            local result = vim.system(command, { stdin = table.concat(lines, "\n") .. "\n", text = true, cwd = vim.fs.dirname(filename) }):wait(1000)
             if result.code ~= 0 then
-                error(("GLSL formatting failed (exit %s): %s"):format(result.code, result.stderr or ""))
+                error(("%s formatting failed (exit %s): %s"):format(filetype, result.code, result.stderr or ""))
             end
             local formatted = vim.split(result.stdout, "\n", { plain = true })
             if formatted[#formatted] == "" then

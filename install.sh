@@ -15,12 +15,12 @@ command -v stow >/dev/null || { echo "Install GNU Stow first (brew install stow 
 [[ -d "$target" ]] || { echo "Target directory does not exist: $target" >&2; exit 1; }
 target=$(cd "$target" && pwd)
 if [[ $# -eq 0 ]]; then
-    set -- vim nvim tmux zsh git htop
+    set -- vim nvim tmux git htop
     [[ $(uname -s) != Darwin ]] || set -- "$@" kitty
 fi
 for package in "$@"; do
     case "$package" in
-        vim|nvim|tmux|zsh|git|kitty|htop) ;;
+        vim|nvim|tmux|git|kitty|htop) ;;
         *) echo "Unknown package: $package" >&2; exit 1 ;;
     esac
 done

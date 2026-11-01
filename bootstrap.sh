@@ -17,12 +17,12 @@ done
 
 export PATH="$HOME/.local/bin:$PATH"
 system=$(uname -s)
-packages=(vim nvim tmux zsh git htop)
+packages=(vim nvim tmux git htop)
 case "$system" in
     Darwin)
         command -v brew >/dev/null || { echo "Install Homebrew first: https://brew.sh" >&2; exit 1; }
         command -v git >/dev/null || brew install git
-        brew install stow vim neovim tmux zsh htop curl unzip ripgrep fd cmake node python
+        brew install stow vim neovim tmux htop curl unzip ripgrep fd cmake node python
         if ! $minimal; then
             brew install --cask kitty font-fira-code-nerd-font
             packages+=(kitty)
@@ -36,7 +36,7 @@ case "$system" in
             command -v sudo >/dev/null || { echo "sudo is required to install system packages." >&2; exit 1; }
             sudo_cmd=(sudo)
         fi
-        common=(stow vim neovim tmux zsh htop curl unzip ripgrep fd-find cmake nodejs npm python3-pip)
+        common=(stow vim neovim tmux htop curl unzip ripgrep fd-find cmake nodejs npm python3-pip)
         command -v git >/dev/null || common+=(git)
         if [[ "$ID" == ubuntu || " ${ID_LIKE:-} " == *" ubuntu "* ]]; then
             ${sudo_cmd[@]+"${sudo_cmd[@]}"} apt update
@@ -86,17 +86,5 @@ if ! command -v tree-sitter >/dev/null; then
     fi
 fi
 
-if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
-    git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
-fi
-theme="$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
-if [[ ! -d "$theme" ]]; then
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$theme"
-fi
-[[ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" && -f "$theme/powerlevel10k.zsh-theme" ]] || {
-    echo "The existing Oh My Zsh or Powerlevel10k installation is incomplete." >&2
-    exit 1
-}
-
 "$repo/install.sh" ${link_args[@]+"${link_args[@]}"} "${packages[@]}"
-echo 'Setup complete. Run zsh, then open nvim to install its plugins.'
+echo 'Setup complete. Open nvim to install its plugins.'

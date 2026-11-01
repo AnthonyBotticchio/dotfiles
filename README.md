@@ -6,10 +6,9 @@ Requires Git and Homebrew (macOS), apt (Ubuntu), or dnf (other supported Linux d
 git clone https://github.com/AnthonyBotticchio/dotfiles.git ~/git/dotfiles
 cd ~/git/dotfiles
 ./bootstrap.sh --backup
-zsh
 ```
 
-Installs dependencies and links configs, backing up existing files. On macOS, add `--minimal` to skip Kitty and its font.
+Installs dependencies and links configs, backing up existing files. Shell configuration is managed separately on each machine. On macOS, add `--minimal` to skip Kitty and its font.
 
 ## Windows
 
@@ -35,4 +34,13 @@ To link configs without installing software:
 .\install.ps1 -Packages git,vim -Backup
 ```
 
-Note: zsh, htop, and Kitty configs are for macOS/Linux or WSL.
+Note: htop is for macOS/Linux or WSL; Kitty is macOS-only.
+
+## Git identity
+
+Git aliases such as `git gone` are shared. Set your global identity on each machine (these commands also work in PowerShell):
+
+```sh
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
