@@ -12,7 +12,7 @@ for arg in "$@"; do
         --backup) link_args=(--backup) ;;
         --help)
             echo "Usage: ./bootstrap.sh [--minimal] [--cluster] [--backup]"
-            echo "  --cluster  Use Linux cluster tools on PATH; install missing Stow/Neovim/Tree-sitter/Zsh under ~/.local."
+            echo "  --cluster  Use Linux cluster tools on PATH; install missing Stow/Neovim/ripgrep/Tree-sitter/Zsh under ~/.local."
             exit 0 ;;
         *) echo "Unknown option: $arg" >&2; exit 1 ;;
     esac
@@ -39,7 +39,7 @@ case "$system" in
     Linux)
         if $cluster; then
             missing=()
-            for tool in git vim tmux curl tar gzip unzip make perl rg python3; do
+            for tool in git vim tmux curl tar gzip unzip make perl python3; do
                 command -v "$tool" >/dev/null || missing+=("$tool")
             done
             if ! command -v cc >/dev/null && ! command -v gcc >/dev/null && ! command -v clang >/dev/null; then
@@ -73,6 +73,27 @@ esac
 
 temp=$(mktemp -d)
 trap 'rm -rf "$temp"' EXIT
+
+if $cluster && ! command -v rg >/dev/null; then
+    case "$(uname -m)" in
+        x86_64) arch=x86_64 ;;
+        aarch64|arm64) arch=aarch64 ;;
+        *) echo "Install ripgrep for this architecture, then retry." >&2; exit 1 ;;
+    esac
+    if [[ -e "$HOME/.local/bin/rg" || -L "$HOME/.local/bin/rg" ]]; then
+        echo "Move the existing ~/.local/bin/rg before installing ripgrep." >&2
+        exit 1
+    fi
+    archive="ripgrep-15.2.0-$arch-unknown-linux-musl"
+    curl -fL --retry 3 "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/$archive.tar.gz" -o "$temp/ripgrep.tar.gz"
+    tar -xzf "$temp/ripgrep.tar.gz" -C "$temp"
+    "$temp/$archive/rg" --version
+    mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
+    destination=$(mktemp -d "$HOME/.local/opt/ripgrep.XXXXXX")
+    mv "$temp/$archive" "$destination/"
+    ln -s "$destination/$archive/rg" "$HOME/.local/bin/rg"
+    hash -r
+fi
 
 if $cluster && ! command -v stow >/dev/null; then
     curl -fL --retry 3 https://ftp.gnu.org/gnu/stow/stow-2.4.1.tar.gz -o "$temp/stow.tar.gz"
@@ -117,7 +138,7 @@ recent_nvim || { echo "Neovim 0.12+ is not available on PATH." >&2; exit 1; }
 
 recent_tree_sitter() {
     local version major minor patch
-    version=$("${1:-tree-sitter}" --version 2>/dev/null) || return 1
+    version=$("${1:-tree-sitter}" --version 2>"${2:-/dev/null}") || return 1
     [[ "$version" =~ ^tree-sitter\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]] || return 1
     major=${BASH_REMATCH[1]} minor=${BASH_REMATCH[2]} patch=${BASH_REMATCH[3]}
     (( major > 0 || minor > 26 || (minor == 26 && patch >= 1) ))
@@ -136,10 +157,15 @@ if ! recent_tree_sitter; then
             echo "Move the existing ~/.local/bin/tree-sitter before installing a newer version." >&2
             exit 1
         fi
-        curl -fL --retry 3 "https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-$arch.gz" -o "$temp/tree-sitter.gz"
+        curl -fL --retry 3 "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.1/tree-sitter-linux-$arch.gz" -o "$temp/tree-sitter.gz"
         gzip -dc "$temp/tree-sitter.gz" > "$temp/tree-sitter"
         chmod +x "$temp/tree-sitter"
-        recent_tree_sitter "$temp/tree-sitter" || { echo "Downloaded Tree-sitter CLI is incompatible with this host." >&2; exit 1; }
+        if ! recent_tree_sitter "$temp/tree-sitter" "$temp/tree-sitter-error"; then
+            cat "$temp/tree-sitter-error" >&2
+            echo 'Setup aborted: a working Tree-sitter CLI 0.26.1+ is required.' >&2
+            echo 'Install or load a binary compatible with this host, then retry.' >&2
+            exit 1
+        fi
         mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
         destination=$(mktemp -d "$HOME/.local/opt/tree-sitter.XXXXXX")
         mv "$temp/tree-sitter" "$destination/"
@@ -147,7 +173,11 @@ if ! recent_tree_sitter; then
         hash -r
     fi
 fi
-recent_tree_sitter || { echo "Tree-sitter CLI 0.26.1+ is not available on PATH." >&2; exit 1; }
+if ! recent_tree_sitter tree-sitter "$temp/tree-sitter-error"; then
+    cat "$temp/tree-sitter-error" >&2
+    echo 'Setup aborted: a working Tree-sitter CLI 0.26.1+ is required on PATH.' >&2
+    exit 1
+fi
 
 "$repo/install.sh" ${link_args[@]+"${link_args[@]}"} "${packages[@]}"
 if $cluster; then

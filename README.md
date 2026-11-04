@@ -20,7 +20,7 @@ export PATH="$HOME/.local/bin:$PATH"
 zsh
 ```
 
-Uses existing cluster tools and installs missing Stow, Neovim, Tree-sitter, and Zsh under `~/.local`, without `sudo`. Includes your Zsh config, Oh My Zsh, and Powerlevel10k. Building Zsh requires a C compiler, `xz`, and ncurses development files. Install Neovim plugins in the allocation too. See the [cluster guide](docs/cluster.md) for prerequisites and workflow details.
+Uses existing cluster tools and installs missing Stow, Neovim, ripgrep, Tree-sitter, and Zsh under `~/.local`, without `sudo`. Includes your Zsh config, Oh My Zsh, and Powerlevel10k. Stops before linking configs if Tree-sitter cannot run. Building Zsh requires a C compiler, `xz`, and ncurses development files. Install Neovim plugins in the allocation too. See the [cluster guide](docs/cluster.md) for prerequisites and workflow details.
 
 ## Commands
 

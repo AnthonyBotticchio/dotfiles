@@ -36,7 +36,7 @@ class BootstrapTests(unittest.TestCase):
             "TEST_TS_VERSION": "0.27.1", "LC_ALL": "C",
         }
         for name in ("bash", "dirname", "mktemp", "rm", "mkdir", "mv", "ln",
-                     "chmod", "tar", "gzip", "perl", "cp"):
+                     "chmod", "tar", "gzip", "perl", "cp", "cat", "sh"):
             (self.bin / name).symlink_to(shutil.which(name))
         for name in ("git", "vim", "tmux", "unzip", "make", "rg", "python3", "cc"):
             (self.bin / name).symlink_to(shutil.which("true"))
@@ -53,7 +53,7 @@ class BootstrapTests(unittest.TestCase):
         self.script("zsh", "exit 0")
         self.script("nvim", 'exit "$TEST_NVIM_EXIT"')
         self.script("tree-sitter", 'echo "tree-sitter $TEST_TS_VERSION"')
-        for name in ("curl", "sudo", "apt", "dnf", "brew", "npm", "srun", "sbatch"):
+        for name in ("curl", "sudo", "apt", "dnf", "brew", "npm", "srun", "sbatch", "cargo", "rustup"):
             self.script(name, f'echo "FORBIDDEN {name} $*" >> "$TEST_LOG"; exit 90')
 
     def script(self, name, body):
@@ -83,7 +83,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertTrue((self.home / ".oh-my-zsh/oh-my-zsh.sh").is_file())
         self.assertTrue((self.home / ".oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme").is_file())
 
-    def downloads(self, *, incompatible=False):
+    def downloads(self, *, incompatible=False, loader_error=False):
         fixtures = self.root / "downloads"
         fixtures.mkdir()
         archive = f"nvim-linux-{self.env['TEST_ARCH'].replace('aarch64', 'arm64')}"
@@ -95,7 +95,8 @@ class BootstrapTests(unittest.TestCase):
         arch = "x64" if self.env["TEST_ARCH"] == "x86_64" else "arm64"
         version = "0.25.0" if incompatible else "0.27.1"
         with gzip.open(fixtures / f"tree-sitter-linux-{arch}.gz", "wb") as output:
-            output.write(f'#!/bin/sh\necho "tree-sitter {version}"\n'.encode())
+            body = 'echo "GLIBC_2.39 not found" >&2; exit 1' if loader_error else f'echo "tree-sitter {version}"'
+            output.write(f'#!/bin/sh\n{body}\n'.encode())
         self.env["TEST_DOWNLOADS"] = str(fixtures)
         self.script("curl", "exec " + shlex.quote(sys.executable) + " -c '" + "\n".join([
             "import os, pathlib, shutil, sys",
@@ -131,10 +132,42 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(self.log.read_text(), calls)
 
     def test_missing_prerequisite_stops_before_changes(self):
-        (self.bin / "rg").unlink()
+        (self.bin / "tmux").unlink()
         output = self.run_bootstrap("--cluster", "--backup", success=False)
-        self.assertIn("Missing cluster tools: rg", output)
+        self.assertIn("Missing cluster tools: tmux", output)
         self.assertEqual(list(self.home.iterdir()), [])
+
+    def test_missing_ripgrep_is_installed_locally(self):
+        (self.bin / "rg").unlink()
+        fixtures = self.root / "downloads"
+        fixtures.mkdir()
+        for arch in ("x86_64", "aarch64"):
+            with self.subTest(arch=arch):
+                self.env["TEST_ARCH"] = arch
+                archive = f"ripgrep-15.2.0-{arch}-unknown-linux-musl"
+                data = b'#!/bin/sh\necho "ripgrep 15.2.0"\n'
+                with tarfile.open(fixtures / f"{archive}.tar.gz", "w:gz") as output:
+                    entry = tarfile.TarInfo(f"{archive}/rg")
+                    entry.mode, entry.size = 0o755, len(data)
+                    output.addfile(entry, io.BytesIO(data))
+                self.script("curl", f'echo "ripgrep download" >> "$TEST_LOG"; exec cp "{fixtures}/{archive}.tar.gz" "$6"')
+                self.run_bootstrap("--cluster", "--backup")
+                self.assert_links()
+                rg = self.home / ".local/bin/rg"
+                self.assertTrue(rg.is_symlink())
+                self.assertTrue(rg.resolve().is_relative_to(self.home.resolve() / ".local/opt"))
+                calls = self.log.read_text()
+                self.run_bootstrap("--cluster", "--backup")
+                self.assertEqual(self.log.read_text(), calls)
+                rg.unlink()
+
+    def test_failed_ripgrep_download_keeps_configs(self):
+        (self.bin / "rg").unlink()
+        (self.home / ".vimrc").write_text("original vim\n")
+        self.script("curl", "exit 22")
+        self.run_bootstrap("--cluster", "--backup", success=False)
+        self.assertEqual((self.home / ".vimrc").read_text(), "original vim\n")
+        self.assertFalse((self.home / ".local/bin/rg").exists())
 
     def test_conflict_without_backup_preserves_file(self):
         (self.home / ".vimrc").write_text("keep me\n")
@@ -167,6 +200,26 @@ class BootstrapTests(unittest.TestCase):
         self.run_bootstrap("--cluster", "--backup", success=False)
         self.assertFalse((self.home / ".local/bin/tree-sitter").exists())
         self.assertFalse((self.home / ".vimrc").exists())
+
+    def test_tree_sitter_loader_failure_aborts_before_config_changes(self):
+        self.env["TEST_TS_VERSION"] = "0.25.0"
+        self.downloads(loader_error=True)
+        (self.home / ".vimrc").write_text("original vim\n")
+        (self.home / ".zshrc").write_text("original zsh\n")
+        path = self.home / ".local/bin/tree-sitter"
+        path.parent.mkdir(parents=True)
+        path.symlink_to(self.bin / "tree-sitter")
+        output = self.run_bootstrap("--cluster", "--backup", success=False)
+        self.assertIn("GLIBC_2.39 not found", output)
+        self.assertIn("Setup aborted", output)
+        self.assertEqual(path.readlink(), self.bin / "tree-sitter")
+        self.assertEqual((self.home / ".vimrc").read_text(), "original vim\n")
+        self.assertEqual((self.home / ".zshrc").read_text(), "original zsh\n")
+        self.assertFalse((self.home / ".gitconfig").exists())
+        self.assertEqual(list(self.home.glob(".dotfiles-backup.*")), [])
+        self.assertFalse((self.home / ".cargo").exists())
+        self.assertFalse((self.home / ".rustup").exists())
+        self.assertNotIn("sh.rustup.rs", self.log.read_text())
 
     def test_failed_download_preserves_existing_link_and_configs(self):
         self.env["TEST_NVIM_EXIT"] = "1"
