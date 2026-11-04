@@ -16,8 +16,10 @@ Bufferline, and the Tokyonight theme. Tested with Neovim 0.12.6.
 ## Tools and installation
 
 Lazy installs the configured plugins on first startup. Git, a C compiler, Make,
-and the Tree-sitter CLI are needed to install/build the plugins and parsers.
+curl, tar, and Tree-sitter CLI 0.26.1+ (installed outside npm) are needed to install/build the plugins and parsers.
 Telescope's live grep uses `rg` (ripgrep).
+
+For computing clusters, see the [cluster setup guide](../../../docs/cluster.md). Use `./bootstrap.sh --cluster --backup` from the repository root and perform the first plugin installation inside an interactive compute allocation.
 
 | Tool | Source | Purpose |
 | --- | --- | --- |

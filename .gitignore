@@ -23,6 +23,7 @@
 .viminfo
 .python_history
 *.log
+__pycache__/
 *.swp
 *.swo
 *~

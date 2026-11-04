@@ -3,17 +3,53 @@ set -euo pipefail
 
 repo=$(cd "$(dirname "$0")" && pwd)
 target=${DOTFILES_TARGET:-$HOME}
-if [[ $# -gt 0 ]]; then
-    if [[ $# -eq 1 && $1 == --help ]]; then
-        echo "Usage: ./install-zsh.sh"
-        echo "Install Zsh, Oh My Zsh, and Powerlevel10k; back up and link shell configs."
-        exit 0
-    fi
-    echo "Unknown option: $1" >&2
-    exit 1
-fi
+cluster=false
+for arg in "$@"; do
+    case "$arg" in
+        --cluster) cluster=true ;;
+        --help)
+            echo "Usage: ./install-zsh.sh [--cluster]"
+            echo "Install Zsh, Oh My Zsh, and Powerlevel10k; back up and link shell configs."
+            echo "  --cluster  Build missing Zsh under ~/.local without sudo (Linux)."
+            exit 0 ;;
+        *) echo "Unknown option: $arg" >&2; exit 1 ;;
+    esac
+done
 [[ -d "$target" ]] || { echo "Target directory does not exist: $target" >&2; exit 1; }
 target=$(cd "$target" && pwd)
+export PATH="$HOME/.local/bin:$PATH"
+
+if $cluster; then
+    [[ $(uname -s) == Linux ]] || { echo "--cluster requires Linux." >&2; exit 1; }
+    command -v git >/dev/null || { echo "Load Git from the site modules before installing Zsh." >&2; exit 1; }
+    if ! command -v zsh >/dev/null; then
+        for tool in curl tar xz make; do
+            command -v "$tool" >/dev/null || { echo "Load $tool before building Zsh." >&2; exit 1; }
+        done
+        if [[ -e "$HOME/.local/bin/zsh" || -L "$HOME/.local/bin/zsh" ]]; then
+            echo "Move the existing ~/.local/bin/zsh before installing Zsh." >&2
+            exit 1
+        fi
+        temp=$(mktemp -d)
+        trap 'rm -rf "$temp"' EXIT
+        curl -fL --retry 3 https://www.zsh.org/pub/zsh-5.9.2.tar.xz -o "$temp/zsh.tar.xz"
+        tar -xJf "$temp/zsh.tar.xz" -C "$temp"
+        mkdir -p "$HOME/.local/opt" "$HOME/.local/bin"
+        destination=$(mktemp -d "$HOME/.local/opt/zsh.XXXXXX")
+        if ! (
+            cd "$temp/zsh-5.9.2" &&
+            ./configure --prefix="$destination" --enable-multibyte &&
+            make -j1 &&
+            make -j1 install
+        ); then
+            echo "Zsh build failed. Check that a C compiler and ncurses development files are available." >&2
+            exit 1
+        fi
+        "$destination/bin/zsh" --version
+        ln -s "$destination/bin/zsh" "$HOME/.local/bin/zsh"
+        hash -r
+    fi
+fi
 
 missing=()
 for tool in zsh git; do
