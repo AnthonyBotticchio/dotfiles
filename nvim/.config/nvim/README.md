@@ -25,14 +25,15 @@ Telescope's live grep uses `rg` (ripgrep).
 | `clang-format` | System `PATH` | GLSL formatting on save |
 | `cmake-language-server` | Mason | CMake language support |
 | `glsl_analyzer` | Mason | GLSL language support |
+| `rust-analyzer` | Mason | Rust language support |
+| `rustfmt` | System `PATH` | Rust formatting on save |
 
 Mason uses `PATH = "append"`, so existing system/Homebrew tools take priority.
-It ensures the CMake and GLSL servers are installed and enables them automatically.
+It ensures the CMake, GLSL, and Rust servers are installed and enables them automatically.
 The LSP configuration explicitly enables system clangd. There is no Mason install
 requirement for clangd or clang-format.
 
-On this Mac, the checked paths are `/usr/bin/clangd` (Apple) and
-`/opt/homebrew/bin/clang-format` (Homebrew). Check Neovim's selections with:
+Check which executables Neovim finds on each machine with:
 
 ```vim
 :lua print(vim.fn.exepath("clangd"))
@@ -80,8 +81,8 @@ comments. See `:help commenting` and `:help lsp-defaults`.
 
 Saving C-family buffers formats through an attached clangd, regardless of file
 extension (including `.cc`, `.cxx`, and `.cu`). Saving GLSL buffers runs
-`clang-format`. Other filetypes are left alone. For a manual C-family formatting
-request, use `:lua vim.lsp.buf.format()`.
+`clang-format`; Rust buffers run `rustfmt --edition 2024`. Other filetypes are left
+alone. For a manual C-family formatting request, use `:lua vim.lsp.buf.format()`.
 
 ## Project workflow
 
@@ -109,11 +110,11 @@ Restart Neovim after changing this configuration. Use `:checkhealth vim.lsp`
 to inspect language servers, `:Mason` to manage Mason tools, and `:Lazy` to
 manage plugins.
 
-## CMake server installation workaround
+## Older CMake server installation workaround (macOS)
 
-The installed `cmake-language-server` is 0.1.11 with pygls 1.3.1. Its existing
-Mason environment uses Apple's Python. This server version requires Python
-below 3.14 and can fail with pygls 2.x.
+This workaround applies to `cmake-language-server` 0.1.11 installations using
+Apple's Python. This server version requires Python below 3.14 and can fail with
+pygls 2.x.
 
 If reinstalling this version fails to find a supported Python, close Neovim
 and launch it with Apple's Python first on `PATH`:

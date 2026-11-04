@@ -17,12 +17,12 @@ done
 
 export PATH="$HOME/.local/bin:$PATH"
 system=$(uname -s)
-packages=(vim nvim tmux git htop)
+packages=(vim nvim tmux git)
 case "$system" in
     Darwin)
         command -v brew >/dev/null || { echo "Install Homebrew first: https://brew.sh" >&2; exit 1; }
         command -v git >/dev/null || brew install git
-        brew install stow vim neovim tmux htop curl unzip ripgrep fd cmake node python
+        brew install stow vim neovim tmux curl unzip ripgrep fd cmake node python
         if ! $minimal; then
             brew install --cask kitty font-fira-code-nerd-font
             packages+=(kitty)
@@ -36,7 +36,7 @@ case "$system" in
             command -v sudo >/dev/null || { echo "sudo is required to install system packages." >&2; exit 1; }
             sudo_cmd=(sudo)
         fi
-        common=(stow vim neovim tmux htop curl unzip ripgrep fd-find cmake nodejs npm python3-pip)
+        common=(stow vim neovim tmux curl unzip ripgrep fd-find cmake nodejs npm python3-pip)
         command -v git >/dev/null || common+=(git)
         if [[ "$ID" == ubuntu || " ${ID_LIKE:-} " == *" ubuntu "* ]]; then
             ${sudo_cmd[@]+"${sudo_cmd[@]}"} apt update

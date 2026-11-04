@@ -8,7 +8,16 @@ cd ~/git/dotfiles
 ./bootstrap.sh --backup
 ```
 
-Installs dependencies and links configs, backing up existing files. Shell configuration is managed separately on each machine. On macOS, add `--minimal` to skip Kitty and its font.
+Installs dependencies and links configs, backing up existing files. On macOS, add `--minimal` to skip Kitty and its font.
+
+## Zsh
+
+```sh
+./install-zsh.sh
+zsh
+```
+
+Installs missing Zsh/Git, Oh My Zsh, and Powerlevel10k, then backs up and links `.zshrc` and `.p10k.zsh`. Reuses existing installations, including Zsh on CAC. Requires administrator access only when Zsh or Git must be installed. Keep machine-specific settings in `~/.zshrc.local`.
 
 ## Windows
 
@@ -34,13 +43,21 @@ To link configs without installing software:
 .\install.ps1 -Packages git,vim -Backup
 ```
 
-Note: htop is for macOS/Linux or WSL; Kitty is macOS-only.
+Kitty is macOS-only.
 
 ## Git identity
 
-Git aliases such as `git gone` are shared. Set your global identity on each machine (these commands also work in PowerShell):
+Git aliases such as `git gone` are shared. Set your identity in the included local file on each machine (these commands also work in PowerShell):
 
 ```sh
-git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
+git config --file "$HOME/.gitconfig.local" user.name "Your Name"
+git config --file "$HOME/.gitconfig.local" user.email "you@example.com"
 ```
+
+The linked `~/.gitconfig` belongs to this repo, so `git config --global` would write machine-specific settings into the shared file. Keep signing and credential-helper settings in `~/.gitconfig.local` too.
+
+## What stays local
+
+Keep `~/.gitconfig.local` and `~/.zshrc.local` outside the repo. SSH keys, credentials, shell history, caches, downloaded plugins/language servers, and backups should stay on each machine; `.gitignore` excludes common local files if they appear here.
+
+Keep `lazy-lock.json` and `.p10k.zsh`: they pin plugins and configure the prompt.

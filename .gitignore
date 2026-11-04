@@ -1,15 +1,40 @@
-# Changes to files that will be ignored by git
-# Uses glob pattern. Ex: '*.exe' ignores all files ending with '.exe'.
-*.exe
-*.bin
-.DS_Store
-imgui.ini
-.codex
-perf.*
-*.log
+# Machine-local overrides and credentials
+*.local
+.env
+.env.*
+!.env.example
+.git-credentials
+.netrc
+.ssh/
+.aws/
+.gnupg/
 
-# Changes to folders that will be ignored by git.
-# Format: [folder_name]/
+# Generated state and downloaded tools
+.cache/
+.local/
+.oh-my-zsh/
+.zcompcache/
+.zcompdump*
+*.zwc
+.zsh_history
+.zsh_sessions/
+.bash_history
+.lesshst
+.viminfo
+.python_history
+*.log
+*.swp
+*.swo
+*~
+
+# Backups
+.dotfiles-backup.*/
+.zsh-backup.*/
+*.bak
+
+# Local workspace files
+.DS_Store
+.codex/
 .vscode/
 install/
 build/
